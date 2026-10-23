@@ -1,13 +1,14 @@
 import {getPages} from "../lib/utils.js";
 
-export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) => {
+export const initPagination = ({ pages, fromRow, toRow, totalRows }, createPage) => {
     const pageTemplate = pages.querySelector('label');
     pages.innerHTML = '';
 
-    return (data, state, action) => {
-        const rowsCount = data.length;
-        const pageCount = Math.ceil(rowsCount / state.rowsPerPage);
-        let page = Math.min(state.page, pageCount);
+    let pageCount;
+
+    const applyPagination = (query, state, action) => {
+        const limit = state.rowsPerPage;
+        let page = state.page;
 
         if (action?.name === 'first') page = 1;
         else if (action?.name === 'prev') page = Math.max(1, page - 1);
@@ -15,16 +16,24 @@ export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) =
         else if (action?.name === 'last') page = pageCount;
         else if (action?.name === 'page') page = Number(action.value);
 
+        return Object.assign({}, query, {
+            limit,
+            page
+        });
+    };
+
+    const updatePagination = (total, { page, limit }) => {
+        pageCount = Math.ceil(total / limit);
+
         const visiblePages = getPages(page, pageCount, 5);
         pages.replaceChildren(...visiblePages.map(pageNumber => {
             return createPage(pageTemplate.cloneNode(true), pageNumber, pageNumber === page);
         }));
 
-        fromRow.textContent = (page - 1) * state.rowsPerPage + 1;
-        toRow.textContent = Math.min(page * state.rowsPerPage, rowsCount);
-        totalRows.textContent = rowsCount;
+        fromRow.textContent = (page - 1) * limit + 1;
+        toRow.textContent = Math.min(page * limit, total);
+        totalRows.textContent = total;
+    };
 
-        const start = (page - 1) * state.rowsPerPage;
-        return data.slice(start, start + state.rowsPerPage);
-    }
+    return { updatePagination, applyPagination };
 };
